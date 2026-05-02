@@ -7,3 +7,4 @@ go_arch_map:
   armv6l: 'armv6'
 
 go_arch: "{{ go_arch_map[ansible_architecture] | default(ansible_architecture) }}"
+__lego_filename: "lego_{{ lego_version }}_linux_{{ go_arch }}.tar.gz"

@@ -24,7 +24,6 @@
 - name: Set checksum and filename facts
   ansible.builtin.set_fact:
     __lego_checksums: "{{ lookup('url', 'https://github.com/go-acme/lego/releases/download/' + lego_version + '/lego_' + lego_version[1:] + '_checksums.txt', wantlist=True) | list }}"
-    __lego_filename: "lego_{{ lego_version }}_linux_{{ go_arch }}.tar.gz"
   run_once: true
   check_mode: false
   delegate_to: localhost
