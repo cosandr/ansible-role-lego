@@ -24,14 +24,15 @@ Ansible 2.12 or higher.
 | `lego_version` | latest | Set Lego version, can be specific version, i.e. `v4.14.2` |
 | `lego_renew_oncalendar` | `*-*-* 00/12:00:00` | Sets systemd timer schedule |
 | `lego_renew_random_delay` | 1h | Sets systemd timer random delay |
-| `lego_pre_script` | "" | Raw string inserted in lego-wrapper |
 | `lego_home` | /etc/lego | Path to store files, including accounts and certificates |
 | `lego_user` | lego | User to run Lego as |
 | `lego_group` | lego | Group to run Lego as |
-| `lego_domains` | [] | Domains to get certs for, see example |
-| `lego_provisioning_synced` | true | Delete renew hooks which are no longer defined |
-| `lego_renew_hooks` | [] | Hooks to run after renewing, see example |
-
+| `lego_certificates` | {} | https://go-acme.github.io/lego/references/ref-file/index.html#certificates |
+| `lego_challenges` | {} | https://go-acme.github.io/lego/references/ref-file/index.html#challenges |
+| `lego_accounts` | {} | https://go-acme.github.io/lego/references/ref-file/index.html#accounts |
+| `lego_provisioning_synced` | true | Delete renew hooks and env files which are no longer defined |
+| `lego_deploy_hooks` | [] | Hooks to run after renewing, see example |
+| `lego_env` | {} | Env files to create, placed in `{{ lego_home }}/env.d/` |
 
 ## Dependencies
 
@@ -48,16 +49,27 @@ None.
   roles:
     - role: lego
       vars:
-        lego_domains:
-          - name: "example.com"
-            email: you@example.com
-            dns: rfc2136
-            env:
-              RFC2136_NAMESERVER: 127.0.0.1
-              RFC2136_TSIG_KEY: lego
-              RFC2136_TSIG_ALGORITHM: hmac-sha256.
-              RFC2136_TSIG_SECRET: YWJjZGVmZGdoaWprbG1ub3BxcnN0dXZ3eHl6MTIzNDU=
-        lego_renew_hooks:
+        lego_certificates:
+          example:
+            challenge: example
+            account: main
+            domains: ["example.com", "*.example.com"]
+        lego_challenges:
+          example:
+            dns:
+              provider: "rfc2136"
+              envFile: "/etc/lego/env.d/example"
+        lego_accounts:
+          main:
+            email: "you@example.com"
+            acceptsTermsOfService: true
+        lego_env:
+          example:
+            RFC2136_NAMESERVER: 127.0.0.1
+            RFC2136_TSIG_KEY: lego
+            RFC2136_TSIG_ALGORITHM: hmac-sha256.
+            RFC2136_TSIG_SECRET: YWJjZGVmZGdoaWprbG1ub3BxcnN0dXZ3eHl6MTIzNDU=
+        lego_deploy_hooks:
           # Hooks prefixed with sudo run as root
           - name: sudo-restart-nginx
             content: |

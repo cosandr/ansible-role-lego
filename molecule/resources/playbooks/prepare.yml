@@ -2,8 +2,7 @@
 
 - name: Prepare
   hosts: all
-  become: true
-  gather_facts: true
+  gather_facts: false
   tasks:
     - name: Update cache and install sudo
       ansible.builtin.package:

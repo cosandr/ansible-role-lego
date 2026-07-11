@@ -1,0 +1,15 @@
+# yaml-language-server: $schema=https://go-acme.github.io/lego/lego.jsonschema.json
+storage: "{{ lego_home }}"
+
+certificates:
+  {{ lego_certificates | to_nice_yaml(indent=2) | indent(2) }}
+
+challenges:
+  {{ lego_challenges | to_nice_yaml(indent=2) | indent(2) }}
+
+accounts:
+  {{ lego_accounts | to_nice_yaml(indent=2) | indent(2) }}
+
+hooks:
+  deploy:
+    command: "{{ lego_home }}/run-hooks"

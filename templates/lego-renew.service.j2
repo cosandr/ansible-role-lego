@@ -1,6 +1,7 @@
 {{ ansible_managed | comment }}
 [Unit]
 Description=Renew ACME certificates
+Documentation=https://go-acme.github.io/lego/
 Requires=network-online.target
 After=network-online.target
 
@@ -8,12 +9,14 @@ After=network-online.target
 User={{ lego_user }}
 Group={{ lego_group }}
 ReadWritePaths={{ lego_home }}
-ExecStart=/usr/local/bin/lego-wrapper renew --renew-hook="{{ lego_home }}/run-hooks"
+WorkingDirectory={{ lego_home }}
+Environment=LEGO_PATH="{{ lego_home }}"
+ExecStart=/usr/local/bin/lego
 PrivateTmp=true
 ProtectHome=true
 ProtectControlGroups=true
 ProtectSystem=strict
-{% if lego_renew_hooks | selectattr('name', 'search', '^sudo-.*') | length == 0 %}
+{% if lego_deploy_hooks | selectattr('name', 'search', '^sudo-.*') | length == 0 %}
 PrivateDevices=true
 ProtectKernelModules=true
 ProtectKernelTunables=true

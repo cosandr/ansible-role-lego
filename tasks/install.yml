@@ -98,16 +98,16 @@
         state: present
       notify: Restore certificates context
 
-    # Create it so restorecon doesn't fail
-    - name: Ensure certificates dir exists
-      ansible.builtin.file:
-        path: "{{ lego_home }}/certificates"
-        state: directory
-        owner: "{{ lego_user }}"
-        group: "{{ lego_group }}"
-        mode: "0700"
-        seuser: system_u
-        setype: cert_t
+# Create it so restorecon/certificates list doesn't fail
+- name: Ensure certificates dir exists
+  ansible.builtin.file:
+    path: "{{ lego_home }}/certificates"
+    state: directory
+    owner: "{{ lego_user }}"
+    group: "{{ lego_group }}"
+    mode: "0700"
+    seuser: system_u
+    setype: cert_t
 
 - name: Install lego
   ansible.builtin.copy:
@@ -127,7 +127,7 @@
 
 - name: Ensure hooks directories exist
   ansible.builtin.file:
-    path: "{{ lego_home }}/renewal-hooks"
+    path: "{{ lego_home }}/deploy-hooks"
     state: directory
     owner: root
     group: "{{ lego_group }}"

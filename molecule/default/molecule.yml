@@ -11,16 +11,15 @@ lint: |
   yamllint .
   ansible-lint
 platforms:
-  - name: default-lego
-    image: "${uns:-jam82}/molecule-${img:-almalinux}:${tag:-9}"
-    command: ""
+  - name: alma9-lego
+    image: "ghcr.io/almalinux/9-init"
     pre_build_image: true
     tty: false
-    tmpfs:
-      - /tmp
-      - /run
+    command: "/sbin/init"
+    systemd: true
     volumes:
       - "/sys/fs/cgroup:/sys/fs/cgroup:ro"
+    groups: ["el", "el9"]
 provisioner:
   name: ansible
   log: true
@@ -31,20 +30,34 @@ provisioner:
   inventory:
     group_vars:
       all:
-        lego_renew_hooks:
+        lego_deploy_hooks:
           - name: sudo-restart-nginx
             content: |
               #!/bin/sh
               systemctl restart nginx
 
-        lego_domains:
-          - name: "example.com"
-            email: you@example.com
-            dns: rfc2136
-            env:
-              RFC2136_NAMESERVER: 127.0.0.1
-              RFC2136_TSIG_KEY: lego
-              RFC2136_TSIG_ALGORITHM: hmac-sha256.
-              RFC2136_TSIG_SECRET: YWJjZGVmZGdoaWprbG1ub3BxcnN0dXZ3eHl6MTIzNDU=
+        lego_certificates:
+          example:
+            challenge: example
+            account: main
+            domains: ["example.com", "*.example.com"]
+
+        lego_challenges:
+          example:
+            dns:
+              provider: "rfc2136"
+              envFile: "/etc/lego/env.d/example"
+
+        lego_accounts:
+          main:
+            email: "you@example.com"
+            acceptsTermsOfService: true
+
+        lego_env:
+          example:
+            RFC2136_NAMESERVER: 127.0.0.1
+            RFC2136_TSIG_KEY: lego
+            RFC2136_TSIG_ALGORITHM: hmac-sha256.
+            RFC2136_TSIG_SECRET: YWJjZGVmZGdoaWprbG1ub3BxcnN0dXZ3eHl6MTIzNDU=
 verifier:
   name: ansible

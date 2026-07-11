@@ -1,6 +1,6 @@
 #!/bin/sh
 
-for f in "{{ lego_home }}/renewal-hooks"/*; do
+for f in "{{ lego_home }}/deploy-hooks"/*; do
     if [ -x "$f" ]; then
         filename="$(basename "$f")"
         case "$filename" in

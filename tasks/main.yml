@@ -7,18 +7,9 @@
       tags: ["install"]
   tags: ["install"]
 
-- name: Install wrapper script
-  ansible.builtin.template:
-    src: lego-wrapper.sh.j2
-    dest: /usr/local/bin/lego-wrapper
-    owner: root
-    group: "{{ lego_group }}"
-    mode: "0750"
-  tags: ["configure"]
-
 - name: Register previously copied hooks files
   ansible.builtin.find:
-    paths: "{{ lego_home }}/renewal-hooks"
+    paths: "{{ lego_home }}/deploy-hooks"
   register: __hooks_present
   when: lego_provisioning_synced
   tags: ["hooks"]
@@ -26,23 +17,59 @@
 - name: Copy renew hooks
   ansible.builtin.copy:
     content: "{{ item.content }}"
-    dest: "{{ lego_home }}/renewal-hooks/{{ item.name }}"
+    dest: "{{ lego_home }}/deploy-hooks/{{ item.name }}"
     owner: root
     group: "{{ lego_group }}"
     mode: "0750"
-  loop: "{{ lego_renew_hooks }}"
+  loop: "{{ lego_deploy_hooks }}"
   loop_control:
     label: "{{ item.name }}"
   register: __hooks_copied
   tags: ["hooks"]
 
+- name: Ensure env dir exists
+  ansible.builtin.file:
+    path: "{{ lego_home }}/env.d"
+    state: directory
+    owner: root
+    group: "{{ lego_group }}"
+    mode: "0750"
+  tags: ["env"]
+
+- name: Register previously copied env files
+  ansible.builtin.find:
+    paths: "{{ lego_home }}/env.d"
+  register: __env_present
+  when: lego_provisioning_synced
+  tags: ["env"]
+
+- name: Install env files
+  ansible.builtin.copy:
+    dest: "{{ lego_home }}/env.d/{{ item.key }}"
+    owner: root
+    group: "{{ lego_group }}"
+    mode: "0640"
+    content: |
+      {% for k, v in item.value.items() %}
+      {{ k }}="{{ v }}"
+      {% endfor %}
+  register: __env_copied
+  loop: "{{ lego_env | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  tags: ["env"]
+
 - name: Set list facts
   ansible.builtin.set_fact:
     __hooks_present_list: "{{ __hooks_present | json_query('files[*].path') | default([]) }}"
     __hooks_copied_list: "{{ __hooks_copied_tmp + __hooks_copied_tmp_check }}"
+    __env_present_list: "{{ __env_present | json_query('files[*].path') | default([]) }}"
+    __env_copied_list: "{{ __env_copied_tmp + __env_copied_tmp_check }}"
   vars:
     __hooks_copied_tmp: "{{ __hooks_copied.results | json_query('[*].dest') | default([]) }}"
     __hooks_copied_tmp_check: "{{ __hooks_copied.results | json_query('[*].invocation.dest') | default([]) }}"
+    __env_copied_tmp: "{{ __env_copied.results | json_query('[*].dest') | default([]) }}"
+    __env_copied_tmp_check: "{{ __env_copied.results | json_query('[*].invocation.dest') | default([]) }}"
   when: lego_provisioning_synced
   tags: ["hooks"]
 
@@ -50,9 +77,32 @@
   ansible.builtin.file:
     path: "{{ item }}"
     state: absent
-  loop: "{{ __hooks_present_list | difference(__hooks_copied_list) }}"
+  loop: "{{ (__hooks_present_list | difference(__hooks_copied_list)) + (__env_present_list | difference(__env_copied_list)) }}"
   when: lego_provisioning_synced
   tags: ["hooks"]
+
+- name: Copy config file
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: "{{ lego_home }}/.lego.yml"
+    owner: root
+    group: "{{ lego_group }}"
+    mode: "0640"
+  tags: ["config"]
+
+# [
+#   {
+#     "name": "example.com",
+#     "domains": [
+#       "*.example.com",
+#       "example.com"
+#     ],
+#     "expirationDate": "2026-08-14 09:28:57 +0000 UTC",
+#     "expired": false,
+#     "issuer": "CN=E8,O=Let's Encrypt,C=US",
+#     "path": "/etc/lego/certificates/example.com.crt"
+#   }
+# ]
 
 - name: Check existing certificates
   become: true
@@ -60,7 +110,7 @@
   check_mode: false
   changed_when: false
   ansible.builtin.command:
-    cmd: /usr/local/bin/lego list --names
+    cmd: /usr/local/bin/lego certificates list --json
   environment:
     LEGO_PATH: "{{ lego_home }}"
   register: __lego_list
@@ -68,27 +118,23 @@
 
 - name: Set fact for missing domains
   ansible.builtin.set_fact:
-    __lego_missing_domains: >-
-      {%- set missing = [] -%}
-      {%- for conf in lego_domains -%}
-      {%- set domains = [conf.name] if conf.name is string else conf.name -%}
-      {%- if domains[0] not in __lego_list.stdout -%}
-      {{- missing.append(domains[0]) -}}
-      {%- endif -%}
-      {%- endfor -%}
-      {{ missing }}
+    __lego_missing_domains: "{{ (lego_certificates.values() | map(attribute='domains') | flatten | sort) | difference((lego_list | map(attribute='domains') | flatten | sort)) }}" # noqa yaml[line-length]
+  vars:
+    lego_list: "{{ __lego_list.stdout | from_json }}"
   tags: ["certs"]
 
 - name: Get certificates
   become: true
   become_user: "{{ lego_user }}"
   ansible.builtin.command:
-    cmd: /usr/local/bin/lego-wrapper run
+    cmd: /usr/local/bin/lego
+  environment:
+    LEGO_PATH: "{{ lego_home }}"
   register: __output
   changed_when: "'The server validated our request' in __output.stderr"
   # For some reason initial request fails
   until: __output.rc == 0
   delay: 5
   retries: 1
-  when: __lego_missing_domains
+  when: __lego_missing_domains | length > 0
   tags: ["certs", "molecule-notest"]

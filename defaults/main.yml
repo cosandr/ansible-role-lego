@@ -3,19 +3,13 @@
 lego_version: latest
 lego_renew_oncalendar: "*-*-* 00/12:00:00"
 lego_renew_random_delay: "1h"
-lego_pre_script: ""
 lego_home: "/etc/lego"
 lego_user: "lego"
 lego_group: "{{ lego_user }}"
-lego_domains: []
-  # - name: "example.com"
-  #   email: you@example.com
-  #   dns: rfc2136
-  #   env:
-  #     RFC2136_NAMESERVER: 127.0.0.1
-  #     RFC2136_TSIG_KEY: lego
-  #     RFC2136_TSIG_ALGORITHM: hmac-sha256.
-  #     RFC2136_TSIG_SECRET: YWJjZGVmZGdoaWprbG1ub3BxcnN0dXZ3eHl6MTIzNDU=
+lego_certificates: {}
+lego_challenges: {}
+lego_accounts: {}
+lego_env: {}
 
 lego_provisioning_synced: true
-lego_renew_hooks: []
+lego_deploy_hooks: []
