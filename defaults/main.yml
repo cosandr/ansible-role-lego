@@ -10,6 +10,7 @@ lego_certificates: {}
 lego_challenges: {}
 lego_accounts: {}
 lego_env: {}
+lego_extra_config: {}
 
 lego_provisioning_synced: true
 lego_deploy_hooks: []

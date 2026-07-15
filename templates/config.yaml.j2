@@ -13,3 +13,7 @@ accounts:
 hooks:
   deploy:
     command: "{{ lego_home }}/run-hooks"
+
+{% if lego_extra_config | length > 0 %}
+{{ lego_extra_config | to_nice_yaml(indent=2) }}
+{% endif %}
